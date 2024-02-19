@@ -1,3 +1,4 @@
+!wget https://raw.githubusercontent.com/aaaddress1/oracle-machine/main/input.txt
 # https://colab.research.google.com/drive/1JMLa53HDuA-i7ZBmqV7ZnA3c_fvtXnx-?usp=sharing#scrollTo=2Num7sX9CKOH&uniqifier=1
 # total 2.14 mins for 1000 iters
 import torch
