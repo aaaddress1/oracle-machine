@@ -41,9 +41,6 @@ class Net(nn.Module):
         # dim: batch_size x seq_len x lstm_hidden_dim
         s, _ = self.lstm(s)
 
-        # make the Variable contiguous in memory (a PyTorch artefact)
-        s = s.contiguous()
-
         # reshape the Variable so that each row contains one token
         # dim: batch_size*seq_len x lstm_hidden_dim
         s = s.view(-1, s.shape[2])
@@ -171,32 +168,70 @@ if __name__ == "__main__":
         data, labels = torch.tensor(batch_data, dtype=torch.long), torch.tensor(batch_labels, dtype=torch.long)
         return data, labels
     
-    for _ in range(100): # epoch for 10 times
+    for _ in range(10): # epoch for 10 times
+        total_acc = 0.0
+        total_loss = 0.0
         for i in range(len(sentences)):
             train_batch, labels_batch = get_batch( sentences[i], labels[i] )
             # compute model output and loss
             output_batch = model(train_batch)
             loss = loss_fn(output_batch, labels_batch)
-
-
+            acc_rate = accuracy(output_batch.data.cpu().numpy(), labels_batch.data.cpu().numpy())
             # clear previous gradients, compute gradients of all variables wrt loss
             optimizer.zero_grad()
             loss.backward()
 
             # performs updates using calculated gradients
             optimizer.step()
+            total_acc += acc_rate
+            total_loss += loss.item()
 
         # Evaluate summaries only once in a while
-        print(f"loss: {loss.item():.2f}")
+        print(f"loss: {total_loss/len(sentence):.2f}... acc_rate = {total_acc/len(sentences):.2f}")
 
     print("finished training!")
-    for s_indx in range(10):
-        train_batch, labels_batch = get_batch( sentences[s_indx], labels[s_indx] )
 
+    total_loss = 0.00
+    total_acc = 0.0
+    for s_indx in range(len(sentences)):
+        train_batch, labels_batch = get_batch( sentences[s_indx], labels[s_indx] )
+            
         output_batch = model(train_batch) # size = (30, 9)
         predict = [ torch.argmin(torch.abs( each_ner) ).tolist() for each_ner in output_batch ]
+        loss = loss_fn(output_batch, labels_batch)
+        acc_rate = accuracy(output_batch.data.cpu().numpy(), labels_batch.data.cpu().numpy())
         print("guess:", predict)
         print("correct:", labels[s_indx] )
+        total_loss += loss
+        total_acc += acc_rate
+    print(f"loss = {total_loss/len(sentences):.2f} ... acc_rate = {total_acc/10:.2f}")
+
+    # -------------------------------------------------------------------------------------------
+    print('', "-"*100, '')
+    print("test val set!")
     
+    sentences, labels = list(), list()
+    for sentence in open("dataset_small/test/sentences.txt").read().splitlines():
+        s = [ vocab[token] if token in vocab else unk_ind for token in sentence.split(' ') ]
+        sentences.append(s)
+    for sentence in open("dataset_small/test/labels.txt").read().splitlines():
+        l = [ tag_map[label] for label in sentence.split(' ') ]
+        labels.append(l)
+    batch_max_len = max([len(s) for s in sentences])
+
+    total_loss = 0.00
+    total_acc = 0.0
+    for s_indx in range(len(sentences)):
+        train_batch, labels_batch = get_batch( sentences[s_indx], labels[s_indx] )
+            
+        output_batch = model(train_batch) # size = (30, 9)
+        predict = [ torch.argmin(torch.abs( each_ner) ).tolist() for each_ner in output_batch ]
+        loss = loss_fn(output_batch, labels_batch)
+        acc_rate = accuracy(output_batch.data.cpu().numpy(), labels_batch.data.cpu().numpy())
+        print("guess:", predict)
+        print("correct:", labels[s_indx] )
+        total_loss += loss
+        total_acc += acc_rate
+
         #guess_ner = [t for t in tag_map if tag_map[t] == 0].pop()
-        print(f"")
+    print(f"loss = {total_loss/len(sentences):.2f} ... acc_rate = {total_acc/10:.2f}")
